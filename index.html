@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ledo Sports Academy - Management System</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="api-client.js"></script>
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <h1>⚽ Ledo Sports Academy</h1>
+                </div>
+                <nav class="nav" id="nav">
+                    <a href="#home" class="nav-link active">Home</a>
+                    <a href="#activities" class="nav-link">Activities</a>
+                    <a href="#members" class="nav-link">Members</a>
+                    <a href="#donations" class="nav-link">Donations</a>
+                    <a href="#expenses" class="nav-link">Expenses</a>
+                    <a href="#experiences" class="nav-link">Experience Log</a>
+                    <a href="#weekly-fees" class="nav-link">Weekly Fees</a>
+                    <a href="#gallery" class="nav-link">Gallery</a>
+                    <a href="#dashboard" class="nav-link admin-only hidden">Dashboard</a>
+                    <a href="#hero-management" class="nav-link admin-only hidden">Hero Management</a>
+                    <a href="#" class="nav-link mobile-admin-login" id="mobileAdminLogin">Admin Login</a>
+                    <a href="#" class="nav-link mobile-admin-logout admin-only hidden" id="mobileAdminLogout">Logout</a>
+                </nav>
+                <div class="admin-section">
+                    <button class="btn btn--outline hidden" id="adminLoginBtn">Admin Login</button>
+                    <button class="btn btn--secondary hidden" id="adminLogoutBtn">Logout</button>
+                </div>
+                <button class="mobile-menu-toggle" id="mobileMenuToggle">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main>
+        <!-- Home Section -->
+        <section id="home" class="section active">
+            <div class="hero-slideshow">
+                <div class="slideshow-container">
+                    <div class="slides-wrapper" id="slidesWrapper">
+                        <!-- Slides will be populated by JavaScript -->
+                    </div>
+                    <div class="slideshow-indicators" id="slideshowIndicators">
+                        <!-- Indicators will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="container">
+                <!-- Recent Events Section -->
+                <div class="events-section">
+                    <div class="events-row">
+                        <div class="recent-events-column">
+                            <h3>Recent Events</h3>
+                            <div class="events-grid" id="recentEventsGrid">
+                                <!-- Recent events will be populated by JavaScript -->
+                            </div>
+                        </div>
+                        
+                        <div class="upcoming-events-column">
+                            <h3>Upcoming Events</h3>
+                            <div class="events-grid" id="upcomingEventsGrid">
+                                <!-- Upcoming events will be populated by JavaScript -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Hero Management Section -->
+        <section id="hero-management" class="section">
+            <div class="container">
+                <div class="section-header">
+                    <h3>Hero Slideshow Management</h3>
+                    <button class="btn btn--primary admin-only" id="addHeroSlideBtn">Add Hero Slide</button>
+                </div>
+                
+                <div class="hero-slides-grid" id="heroSlidesGrid">
+                    <!-- Hero slides will be populated by JavaScript -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Dashboard Section -->
+        <section id="dashboard" class="section">
+            <div class="container">
+                <div class="hero">
+                    <h2>Ledo Sports Academy Dashboard</h2>
+                    <p>Complete overview of academy operations, finances, and member activities.</p>
+                </div>
+                
+                <!-- Key Metrics Cards -->
+                <div class="dashboard-metrics">
+                    <div class="metric-card">
+                        <div class="metric-icon">👥</div>
+                        <div class="metric-content">
+                            <h4>Total Members</h4>
+                            <span class="metric-value" id="totalMembersCount">0</span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">📅</div>
+                        <div class="metric-content">
+                            <h4>Total Activities</h4>
+                            <span class="metric-value" id="totalActivitiesCount">0</span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">💰</div>
+                        <div class="metric-content">
+                            <h4>Total Donations</h4>
+                            <span class="metric-value" id="totalDonationsAmount">₹0</span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">💸</div>
+                        <div class="metric-content">
+                            <h4>Total Expenses</h4>
+                            <span class="metric-value" id="totalExpensesAmount">₹0</span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">📊</div>
+                        <div class="metric-content">
+                            <h4>Net Balance</h4>
+                            <span class="metric-value" id="netBalanceAmount">₹0</span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="metric-icon">💳</div>
+                        <div class="metric-content">
+                            <h4>Fees Collected</h4>
+                            <span class="metric-value" id="feesCollectedAmount">₹0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Section -->
+                <div class="dashboard-charts">
+                    <div class="chart-container" style="position: relative; height: 300px;">
+                        <h4>Financial Overview</h4>
+                        <canvas id="financialChart"></canvas>
+                    </div>
+                    <div class="chart-container" style="position: relative; height: 300px;">
+                        <h4>Expense Categories</h4>
+                        <canvas id="expenseChart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Admin PDF Export -->
+                <div class="admin-panel admin-only">
+                    <h3>Admin Panel - Export Reports</h3>
+                    <div class="export-buttons">
+                        <button class="btn btn--primary" id="exportAllDataBtn">📄 Export Complete Report</button>
+                        <button class="btn btn--outline" id="exportFinancialBtn">💰 Export Financial Report</button>
+                        <button class="btn btn--outline" id="exportMembersBtn">👥 Export Members Report</button>
+                        <button class="btn btn--outline" id="exportExpensesBtn">💸 Export Expenses Report</button>
+                    </div>
+                </div>
+
+                <!-- Recent Activities Summary -->
+                <div class="recent-activities">
+                    <h3>Recent Activities</h3>
+                    <div class="activities-summary" id="recentActivitiesSummary">
+                        <!-- Recent activities will be populated by JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Activities Section -->
+        <section id="activities" class="section">
+            <div class="container">
+                <div class="section-header">
+                    <h3>Current Activities</h3>
+                    <button class="btn btn--primary hidden admin-only" id="addActivityBtn">Add Activity</button>
+                </div>
+                
+                <div class="activities-grid" id="activitiesGrid">
+                    <!-- Activities will be populated by JavaScript -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Members Section -->
+        <section id="members" class="section">
+            <div class="container">
+                <div class="section-header">
+                    <h3>Academy Members</h3>
+                    <button class="btn btn--primary hidden admin-only" id="addMemberBtn">Add Member</button>
+                </div>
+                
+                <div class="search-container">
+                    <input type="text" class="form-control" id="memberSearch" placeholder="Search members...">
+                </div>
+                
+                <div class="members-grid" id="membersGrid">
+                    <!-- Members will be populated by JavaScript -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Donations Section -->
+        <section id="donations" class="section">
+            <div class="container">
+                <div class="section-header">
+                    <h3>Donation Records</h3>
+                    <button class="btn btn--primary hidden admin-only" id="addDonationBtn">Add Donation</button>
+                </div>
+                
+                <div class="donations-summary">
+                    <div class="summary-card">
+                        <h4>Total Donations</h4>
+                        <span class="total-amount" id="totalDonations">₹0</span>
+                    </div>
+                </div>
+                
+                <div class="donations-grid" id="donationsGrid">
+                    <!-- Donations will be populated by JavaScript -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Expenses Section -->
+        <section id="expenses" class="section">
+            <div class="container">
+                <div class="section-header">
+                    <h3>Expense Management</h3>
+                    <button class="btn btn--primary hidden admin-only" id="addExpenseBtn">Add Expense</button>
+                </div>
+                
+                <div class="expenses-summary">
+                    <div class="summary-card">
+                        <h4>Total Expenses</h4>
+                        <span class="total-amount" id="totalExpenses">₹0</span>
+                    </div>
+                </div>
+                
+                <div class="expenses-grid" id="expensesGrid">
+                    <!-- Expenses will be populated by JavaScript -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Experience Log Section -->
+        <section id="experiences" class="section">
+            <div class="container">
+                <div class="section-header">
+                    <h3>Experience Log</h3>
+                    <button class="btn btn--primary hidden admin-only" id="addExperienceBtn">Add Experience</button>
+                </div>
+                
+                <div class="experiences-timeline" id="experiencesTimeline">
+                    <!-- Experiences will be populated by JavaScript -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Weekly Fees Section -->
+        <section id="weekly-fees" class="section">
+            <div class="container">
+                <div class="section-header">
+                    <h3>Weekly Membership Fees</h3>
+                </div>
+                
+                <div class="fee-info">
+                    <div class="info-card">
+                        <h4>Weekly Fee: ₹20</h4>
+                        <p>Every Sunday, members contribute ₹20 as membership fee</p>
+                    </div>
+                </div>
+                
+                <div class="weekly-fees-grid" id="weeklyFeesGrid">
+                    <!-- Weekly fees will be populated by JavaScript -->
+                </div>
+            </div>
+        </section>
+
+        <!-- Gallery Section -->
+        <section id="gallery" class="section">
+            <div class="container">
+                <div class="section-header">
+                    <h3>Photo Gallery</h3>
+                    <button class="btn btn--primary hidden admin-only" id="addGalleryBtn">Add Photo</button>
+                </div>
+                
+                <div class="admin-only gallery-management">
+                    <div class="gallery-controls">
+                        <h4>Top 5 Featured Photos for Homepage</h4>
+                        <p>Drag photos below to reorder them for the homepage slideshow</p>
+                        <div class="top5-gallery" id="top5Gallery">
+                            <!-- Top 5 photos will be populated by JavaScript -->
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="gallery-grid" id="galleryGrid">
+                    <!-- Gallery photos will be populated by JavaScript -->
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Lightbox Modal -->
+    <div class="lightbox hidden" id="lightbox">
+        <div class="lightbox-content">
+            <button class="lightbox-close" id="lightboxClose">&times;</button>
+            <img src="" alt="" id="lightboxImage">
+            <div class="lightbox-info">
+                <h4 id="lightboxTitle"></h4>
+            </div>
+            <div class="lightbox-nav">
+                <button class="lightbox-prev" id="lightboxPrev">‹</button>
+                <button class="lightbox-next" id="lightboxNext">›</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Admin Login Modal -->
+    <div class="modal hidden" id="adminLoginModal">
+        <div class="modal-content">
+            <h3>Admin Login</h3>
+            <form id="adminLoginForm">
+                <div class="form-group">
+                    <label class="form-label">Password</label>
+                    <input type="password" class="form-control" id="adminPassword" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn--outline" id="cancelLoginBtn">Cancel</button>
+                    <button type="submit" class="btn btn--primary">Login</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Hero Slide Form Modal -->
+    <div class="modal hidden" id="heroSlideModal">
+        <div class="modal-content">
+            <h3 id="heroSlideModalTitle">Add Hero Slide</h3>
+            <form id="heroSlideForm">
+                <div class="form-group">
+                    <label class="form-label">Title</label>
+                    <input type="text" class="form-control" id="heroSlideTitle" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Subtitle</label>
+                    <input type="text" class="form-control" id="heroSlideSubtitle" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" id="heroSlideDescription" rows="3" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Background Image URL</label>
+                    <input type="url" class="form-control" id="heroSlideBackgroundImage" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">CTA Button Text</label>
+                    <input type="text" class="form-control" id="heroSlideCtaText" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Default CTA Link</label>
+                    <input type="text" class="form-control" id="heroSlideCtaLink" placeholder="#section or URL">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Redirect URL (Admin Override)</label>
+                    <input type="url" class="form-control" id="heroSlideRedirectUrl" placeholder="https://example.com">
+                    <small class="form-text">If set, this URL will be used instead of the default CTA link</small>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">
+                        <input type="checkbox" id="heroSlideOpenNewTab"> Open redirect URL in new tab
+                    </label>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn--outline" id="cancelHeroSlideBtn">Cancel</button>
+                    <button type="submit" class="btn btn--primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Activity Form Modal -->
+    <div class="modal hidden" id="activityModal">
+        <div class="modal-content">
+            <h3 id="activityModalTitle">Add Activity</h3>
+            <form id="activityForm">
+                <div class="form-group">
+                    <label class="form-label">Title</label>
+                    <input type="text" class="form-control" id="activityTitle" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Date</label>
+                    <input type="date" class="form-control" id="activityDate" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Time</label>
+                    <input type="time" class="form-control" id="activityTime" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" id="activityDescription" rows="3" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Image URL</label>
+                    <input type="url" class="form-control" id="activityImage">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Status</label>
+                    <select class="form-control" id="activityStatus" required>
+                        <option value="">Select Status</option>
+                        <option value="upcoming">Upcoming</option>
+                        <option value="recent">Recent</option>
+                        <option value="active">Active</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Redirect URL (Admin Override)</label>
+                    <input type="url" class="form-control" id="activityRedirectUrl" placeholder="https://example.com">
+                    <small class="form-text">If set, clicking this event will redirect to this URL</small>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">
+                        <input type="checkbox" id="activityOpenNewTab"> Open redirect URL in new tab
+                    </label>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn--outline" id="cancelActivityBtn">Cancel</button>
+                    <button type="submit" class="btn btn--primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Member Form Modal -->
+    <div class="modal hidden" id="memberModal">
+        <div class="modal-content">
+            <h3 id="memberModalTitle">Add Member</h3>
+            <form id="memberForm">
+                <div class="form-group">
+                    <label class="form-label">Name</label>
+                    <input type="text" class="form-control" id="memberName" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Email</label>
+                    <input type="email" class="form-control" id="memberContact" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Phone</label>
+                    <input type="tel" class="form-control" id="memberPhone" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Role</label>
+                    <input type="text" class="form-control" id="memberRole" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Join Date</label>
+                    <input type="date" class="form-control" id="memberJoinDate" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Image URL</label>
+                    <input type="url" class="form-control" id="memberImage">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn--outline" id="cancelMemberBtn">Cancel</button>
+                    <button type="submit" class="btn btn--primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Donation Form Modal -->
+    <div class="modal hidden" id="donationModal">
+        <div class="modal-content">
+            <h3 id="donationModalTitle">Add Donation</h3>
+            <form id="donationForm">
+                <div class="form-group">
+                    <label class="form-label">Donor Name</label>
+                    <input type="text" class="form-control" id="donorName" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Amount (₹)</label>
+                    <input type="number" class="form-control" id="donationAmount" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Date</label>
+                    <input type="date" class="form-control" id="donationDate" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Purpose</label>
+                    <input type="text" class="form-control" id="donationPurpose" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn--outline" id="cancelDonationBtn">Cancel</button>
+                    <button type="submit" class="btn btn--primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Expense Form Modal -->
+    <div class="modal hidden" id="expenseModal">
+        <div class="modal-content">
+            <h3 id="expenseModalTitle">Add Expense</h3>
+            <form id="expenseForm">
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <input type="text" class="form-control" id="expenseDescription" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Amount (₹)</label>
+                    <input type="number" class="form-control" id="expenseAmount" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Date</label>
+                    <input type="date" class="form-control" id="expenseDate" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Category</label>
+                    <select class="form-control" id="expenseCategory" required>
+                        <option value="">Select Category</option>
+                        <option value="Equipment">Equipment</option>
+                        <option value="Maintenance">Maintenance</option>
+                        <option value="Transportation">Transportation</option>
+                        <option value="Utilities">Utilities</option>
+                        <option value="Medical">Medical</option>
+                        <option value="Tournament">Tournament</option>
+                        <option value="Marketing">Marketing</option>
+                        <option value="Insurance">Insurance</option>
+                        <option value="Food & Beverage">Food & Beverage</option>
+                        <option value="Office">Office</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Vendor</label>
+                    <input type="text" class="form-control" id="expenseVendor" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Payment Method</label>
+                    <select class="form-control" id="expensePaymentMethod" required>
+                        <option value="">Select Payment Method</option>
+                        <option value="Cash">Cash</option>
+                        <option value="Bank Transfer">Bank Transfer</option>
+                        <option value="UPI">UPI</option>
+                        <option value="Card">Card</option>
+                        <option value="Online">Online</option>
+                    </select>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn--outline" id="cancelExpenseBtn">Cancel</button>
+                    <button type="submit" class="btn btn--primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Experience Form Modal -->
+    <div class="modal hidden" id="experienceModal">
+        <div class="modal-content">
+            <h3 id="experienceModalTitle">Add Experience</h3>
+            <form id="experienceForm">
+                <div class="form-group">
+                    <label class="form-label">Title</label>
+                    <input type="text" class="form-control" id="experienceTitle" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Date</label>
+                    <input type="date" class="form-control" id="experienceDate" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea class="form-control" id="experienceDescription" rows="4" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Image URL</label>
+                    <input type="url" class="form-control" id="experienceImage">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn--outline" id="cancelExperienceBtn">Cancel</button>
+                    <button type="submit" class="btn btn--primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Gallery Form Modal -->
+    <div class="modal hidden" id="galleryModal">
+        <div class="modal-content">
+            <h3 id="galleryModalTitle">Add Photo</h3>
+            <form id="galleryForm">
+                <div class="form-group">
+                    <label class="form-label">Title</label>
+                    <input type="text" class="form-control" id="galleryTitle" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Image URL</label>
+                    <input type="url" class="form-control" id="galleryUrl" required>
+                    <small class="form-text">Please enter a valid image URL (http:// or https://)</small>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Album/Event (Optional)</label>
+                    <input type="text" class="form-control" id="galleryAlbum" placeholder="e.g., Training, Tournament, Awards">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn--outline" id="cancelGalleryBtn">Cancel</button>
+                    <button type="submit" class="btn btn--primary">Save</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Success/Error Message -->
+    <div class="message hidden" id="message">
+        <span id="messageText"></span>
+    </div>
+
+    <script src="app-modified.js"></script>
+</body>
+</html>
