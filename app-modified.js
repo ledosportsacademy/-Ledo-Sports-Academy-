@@ -20,7 +20,10 @@ let currentEditingItem = null;
 let currentEditingType = null;
 let currentLightboxIndex = 0;
 let slideshowPaused = false;
+let isSlideshowPaused = false;
 let slideshowInterval = null;
+let isCurrentlyOnHome = true;
+let currentSlideIndex = 0;
 
 // Utility functions
 function isValidUrl(url) {
@@ -28,16 +31,31 @@ function isValidUrl(url) {
   return url.startsWith('http://') || url.startsWith('https://');
 }
 
-function handleRedirectUrl(url, openNewTab) {
-  if (!url) return false;
+function handleRedirectUrl(redirectUrl, defaultUrl, openNewTab) {
+  const finalUrl = redirectUrl && redirectUrl.trim() ? redirectUrl : defaultUrl;
   
-  if (openNewTab) {
-    window.open(url, '_blank');
-  } else {
-    window.location.href = url;
+  if (finalUrl.startsWith('#')) {
+    // Internal navigation
+    const target = finalUrl.substring(1);
+    showSection(target);
+    setActiveNavLink(document.querySelector('[href="' + finalUrl + '"]'));
+    isCurrentlyOnHome = (target === 'home');
+    if (isCurrentlyOnHome && !isSlideshowPaused) {
+      startSlideshow();
+    } else {
+      stopSlideshow();
+    }
+    // Close mobile menu if open
+    const nav = document.getElementById('nav');
+    if (nav) nav.classList.remove('active');
+  } else if (isValidUrl(finalUrl)) {
+    // External URL
+    if (openNewTab) {
+      window.open(finalUrl, '_blank');
+    } else {
+      window.location.href = finalUrl;
+    }
   }
-  
-  return true;
 }
 
 // Initialize application
@@ -107,6 +125,14 @@ function initializeUI() {
       showSection(targetId);
       setActiveNavLink(this);
       
+      // Update slideshow state based on current section
+      isCurrentlyOnHome = (targetId === 'home');
+      if (isCurrentlyOnHome && !isSlideshowPaused) {
+        startSlideshow();
+      } else {
+        stopSlideshow();
+      }
+      
       // Close mobile menu if open
       const nav = document.getElementById('nav');
       if (nav.classList.contains('active')) {
@@ -150,16 +176,7 @@ function initializeUI() {
   setupModals();
   
   // Set up slideshow hover
-  const slideshowContainer = document.querySelector('.slideshow-container');
-  if (slideshowContainer) {
-    slideshowContainer.addEventListener('mouseenter', function() {
-      slideshowPaused = true;
-    });
-    
-    slideshowContainer.addEventListener('mouseleave', function() {
-      slideshowPaused = false;
-    });
-  }
+  setupSlideshowHoverListeners();
   
   // Set up lightbox keyboard navigation
   document.addEventListener('keydown', function(e) {
@@ -239,11 +256,42 @@ function navigateLightbox(direction) {
 function startSlideshow() {
   renderSlides();
   
-  slideshowInterval = setInterval(function() {
-    if (!slideshowPaused) {
-      nextSlide();
-    }
-  }, 5000);
+  if (slideshowInterval) clearInterval(slideshowInterval);
+  
+  // Only start if we're on home and not paused
+  if (isCurrentlyOnHome && !isSlideshowPaused) {
+    slideshowInterval = setInterval(function() {
+      if (!isSlideshowPaused) {
+        nextSlide();
+      }
+    }, 5000);
+  }
+}
+
+function stopSlideshow() {
+  if (slideshowInterval) {
+    clearInterval(slideshowInterval);
+    slideshowInterval = null;
+  }
+}
+
+function setupSlideshowHoverListeners() {
+  const slideshowContainer = document.querySelector('.hero-slideshow');
+  if (slideshowContainer) {
+    slideshowContainer.addEventListener('mouseenter', function() {
+      if (isCurrentlyOnHome) {
+        isSlideshowPaused = true;
+        stopSlideshow();
+      }
+    });
+    
+    slideshowContainer.addEventListener('mouseleave', function() {
+      if (isCurrentlyOnHome) {
+        isSlideshowPaused = false;
+        startSlideshow();
+      }
+    });
+  }
 }
 
 function renderSlides() {
@@ -302,42 +350,27 @@ function renderSlides() {
 }
 
 function nextSlide() {
-  const slides = document.querySelectorAll('.slide');
-  const indicators = document.querySelectorAll('.indicator');
-  
-  if (!slides.length) return;
-  
-  let activeIndex = 0;
-  slides.forEach(function(slide, index) {
-    if (slide.classList.contains('active')) {
-      activeIndex = index;
-      slide.classList.remove('active');
-    }
-  });
-  
-  indicators.forEach(function(indicator) {
-    indicator.classList.remove('active');
-  });
-  
-  const nextIndex = (activeIndex + 1) % slides.length;
-  slides[nextIndex].classList.add('active');
-  indicators[nextIndex].classList.add('active');
+  currentSlideIndex = (currentSlideIndex + 1) % appData.heroSlides.length;
+  goToSlide(currentSlideIndex);
 }
 
 function goToSlide(index) {
   const slides = document.querySelectorAll('.slide');
   const indicators = document.querySelectorAll('.indicator');
   
+  // Remove active class from all slides and indicators
   slides.forEach(function(slide) {
     slide.classList.remove('active');
   });
-  
   indicators.forEach(function(indicator) {
     indicator.classList.remove('active');
   });
   
-  slides[index].classList.add('active');
-  indicators[index].classList.add('active');
+  // Add active class to current slide and indicator
+  if (slides[index]) slides[index].classList.add('active');
+  if (indicators[index]) indicators[index].classList.add('active');
+  
+  currentSlideIndex = index;
 }
 
 // Hero Management
@@ -1215,6 +1248,224 @@ function updateDashboardMetricsFromData(data) {
   if (elements.totalExperiencesCount) elements.totalExperiencesCount.textContent = data.totalExperiences;
 }
 
+// Initialize app function
+function initializeApp() {
+  console.log('Initializing app...');
+  
+  // Update hero slides to use gallery top 5
+  updateHeroSlidesFromGallery();
+  
+  // Render all content
+  renderHeroSlideshow();
+  renderHeroManagement();
+  renderHomeEvents();
+  renderDashboard();
+  renderActivities();
+  renderMembers();
+  renderDonations();
+  renderExpenses();
+  renderExperiences();
+  renderWeeklyFees();
+  renderGallery();
+  updateTotalDonations();
+  updateTotalExpenses();
+  renderRecentActivities();
+  
+  // Show home section by default
+  showSection('home');
+  startSlideshow();
+  
+  console.log('App initialized successfully');
+}
+
+async function updateHeroSlidesFromGallery() {
+  try {
+    // Get top five photos from gallery
+    const topFivePhotos = appData.gallery
+      .filter(function(photo) { return photo.isTopFive; })
+      .sort(function(a, b) { return a.order - b.order; })
+      .slice(0, 5);
+    
+    if (topFivePhotos.length >= 5) {
+      // Create hero slides data
+      const heroSlidesData = topFivePhotos.map(function(photo, index) {
+        const titles = [
+          "Welcome to Ledo Sports Academy",
+          "Championship Excellence",
+          "Team Spirit & Unity",
+          "Youth Development Program",
+          "Community Sports Festival"
+        ];
+        const subtitles = [
+          "Where Champions Are Born",
+          "Celebrating Our Victories",
+          "Building Strong Teams",
+          "Nurturing Future Stars",
+          "Building Tomorrow's Athletes"
+        ];
+        const descriptions = [
+          "Join India's premier sports academy and unlock your potential with world-class training facilities and expert coaches.",
+          "Our dedication and hard work have led us to numerous victories and championships throughout the years.",
+          "Experience the power of teamwork and collaboration as we build stronger athletes and better individuals.",
+          "Investing in youth development to create the next generation of sports champions and leaders.",
+          "Fostering sports culture and healthy competition with over 500 participants from local schools."
+        ];
+        const ctaLinks = ["#members", "#experiences", "#activities", "#donations", "#gallery"];
+        const ctaTexts = ["Join Today", "Our Journey", "Explore", "Support Us", "View Gallery"];
+        
+        return {
+          id: photo.id,
+          title: titles[index] || photo.title,
+          subtitle: subtitles[index] || "Excellence in Sports",
+          description: descriptions[index] || "Discover the world of sports excellence at Ledo Sports Academy.",
+          backgroundImage: photo.url,
+          ctaText: ctaTexts[index] || "Learn More",
+          ctaLink: ctaLinks[index] || "#activities",
+          redirectUrl: "",
+          openNewTab: false
+        };
+      });
+      
+      // Update hero slides via API
+      // First, delete existing hero slides
+      const existingSlides = await api.hero.getAll();
+      for (const slide of existingSlides) {
+        await api.hero.delete(slide.id);
+      }
+      
+      // Then create new hero slides
+      for (const slideData of heroSlidesData) {
+        await api.hero.create(slideData);
+      }
+      
+      // Reload hero slides data
+      appData.heroSlides = await api.hero.getAll();
+    }
+  } catch (error) {
+    console.error('Error updating hero slides from gallery:', error);
+    showMessage('Failed to update hero slides. Using local data instead.', 'error');
+    
+    // Fallback to local data if API fails
+    const topFivePhotos = appData.gallery
+      .filter(function(photo) { return photo.isTopFive; })
+      .sort(function(a, b) { return a.order - b.order; })
+      .slice(0, 5);
+    
+    if (topFivePhotos.length >= 5) {
+      appData.heroSlides = topFivePhotos.map(function(photo, index) {
+        const titles = [
+          "Welcome to Ledo Sports Academy",
+          "Championship Excellence",
+          "Team Spirit & Unity",
+          "Youth Development Program",
+          "Community Sports Festival"
+        ];
+        const subtitles = [
+          "Where Champions Are Born",
+          "Celebrating Our Victories",
+          "Building Strong Teams",
+          "Nurturing Future Stars",
+          "Building Tomorrow's Athletes"
+        ];
+        const descriptions = [
+          "Join India's premier sports academy and unlock your potential with world-class training facilities and expert coaches.",
+          "Our dedication and hard work have led us to numerous victories and championships throughout the years.",
+          "Experience the power of teamwork and collaboration as we build stronger athletes and better individuals.",
+          "Investing in youth development to create the next generation of sports champions and leaders.",
+          "Fostering sports culture and healthy competition with over 500 participants from local schools."
+        ];
+        const ctaLinks = ["#members", "#experiences", "#activities", "#donations", "#gallery"];
+        const ctaTexts = ["Join Today", "Our Journey", "Explore", "Support Us", "View Gallery"];
+        
+        return {
+          id: photo.id,
+          title: titles[index] || photo.title,
+          subtitle: subtitles[index] || "Excellence in Sports",
+          description: descriptions[index] || "Discover the world of sports excellence at Ledo Sports Academy.",
+          backgroundImage: photo.url,
+          ctaText: ctaTexts[index] || "Learn More",
+          ctaLink: ctaLinks[index] || "#activities",
+          redirectUrl: "",
+          openNewTab: false
+        };
+      });
+    }
+  }
+}
+
+// Home Events Functions
+function renderHomeEvents() {
+  renderRecentEvents();
+  renderUpcomingEvents();
+}
+
+function renderRecentEvents() {
+  const grid = document.getElementById('recentEventsGrid');
+  if (!grid) return;
+  
+  grid.innerHTML = '';
+  
+  const recentEvents = appData.activities
+    .filter(function(activity) { return activity.status === 'recent'; })
+    .slice(0, 3);
+  
+  recentEvents.forEach(function(event) {
+    const eventCard = createEventCard(event);
+    grid.appendChild(eventCard);
+  });
+}
+
+function renderUpcomingEvents() {
+  const grid = document.getElementById('upcomingEventsGrid');
+  if (!grid) return;
+  
+  grid.innerHTML = '';
+  
+  const upcomingEvents = appData.activities
+    .filter(function(activity) { return activity.status === 'upcoming'; })
+    .slice(0, 3);
+  
+  upcomingEvents.forEach(function(event) {
+    const eventCard = createEventCard(event);
+    grid.appendChild(eventCard);
+  });
+}
+
+function createEventCard(event) {
+  const card = document.createElement('div');
+  card.className = 'event-card';
+  
+  const formattedDate = new Date(event.date).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  const hasRedirect = event.redirectUrl && event.redirectUrl.trim();
+
+  card.innerHTML = 
+    '<img src="' + event.image + '" alt="' + event.title + '" class="event-image" onerror="this.style.display=\'none\'">' +
+    '<h4 class="event-title">' + event.title + '</h4>' +
+    '<div class="event-meta">' +
+      '<span>📅 ' + formattedDate + '</span>' +
+      '<span>🕐 ' + event.time + '</span>' +
+    '</div>' +
+    '<p class="event-description">' + event.description + '</p>' +
+    (hasRedirect ? '<div class="redirect-indicator">🔗 Custom Link</div>' : '');
+
+  // Add click event for redirect functionality
+  card.addEventListener('click', function(e) {
+    // Don't handle clicks on buttons or other interactive elements
+    if (!e.target.matches('button') && !e.target.closest('button')) {
+      if (hasRedirect) {
+        handleRedirectUrl(event.redirectUrl, '#activities', event.openNewTab);
+      }
+    }
+  });
+
+  return card;
+}
+
 async function renderCharts() {
   try {
     const financialData = await api.dashboard.getFinancialOverview();
@@ -1461,6 +1712,60 @@ function updateHeroSlides() {
   renderSlides();
 }
 
+// Hero Slideshow Function
+function renderHeroSlideshow() {
+  const slidesWrapper = document.getElementById('slidesWrapper');
+  const indicatorsContainer = document.getElementById('slideshowIndicators');
+  
+  if (!slidesWrapper || !indicatorsContainer) return;
+  
+  slidesWrapper.innerHTML = '';
+  indicatorsContainer.innerHTML = '';
+  
+  appData.heroSlides.forEach(function(slide, index) {
+    // Create slide
+    const slideElement = document.createElement('div');
+    slideElement.className = index === 0 ? 'slide active' : 'slide';
+    slideElement.style.backgroundImage = 'url("' + slide.backgroundImage + '")';
+    
+    slideElement.innerHTML = 
+      '<div class="slide-overlay">' +
+        '<div class="slide-content">' +
+          '<h1 class="slide-title">' + slide.title + '</h1>' +
+          '<h2 class="slide-subtitle">' + slide.subtitle + '</h2>' +
+          '<p class="slide-description">' + slide.description + '</p>' +
+          '<button class="slide-cta" data-cta-link="' + slide.ctaLink + '" data-redirect-url="' + (slide.redirectUrl || '') + '" data-open-new-tab="' + (slide.openNewTab ? 'true' : 'false') + '">' + slide.ctaText + '</button>' +
+        '</div>' +
+      '</div>';
+    
+    slidesWrapper.appendChild(slideElement);
+    
+    // Add event listener to CTA button
+    const ctaButton = slideElement.querySelector('.slide-cta');
+    if (ctaButton) {
+      ctaButton.addEventListener('click', function(e) {
+        e.preventDefault();
+        
+        const defaultUrl = this.getAttribute('data-cta-link');
+        const redirectUrl = this.getAttribute('data-redirect-url');
+        const openNewTab = this.getAttribute('data-open-new-tab') === 'true';
+        handleRedirectUrl(redirectUrl, defaultUrl, openNewTab);
+      });
+    }
+    
+    // Create indicator with proper event handling
+    const indicator = document.createElement('div');
+    indicator.className = index === 0 ? 'indicator active' : 'indicator';
+    indicator.setAttribute('data-slide-index', index);
+    indicator.addEventListener('click', function() {
+      const slideIndex = parseInt(this.getAttribute('data-slide-index'));
+      goToSlide(slideIndex);
+    });
+    
+    indicatorsContainer.appendChild(indicator);
+  });
+}
+
 // Activities rendering function
 function renderActivities() {
   const grid = document.getElementById('activitiesGrid');
@@ -1505,7 +1810,7 @@ function createActivityCard(activity) {
     // Don't handle clicks on buttons or other interactive elements
     if (!e.target.matches('button') && !e.target.closest('button')) {
       if (hasRedirect) {
-        handleRedirectUrl(activity.redirectUrl, activity.openNewTab);
+        handleRedirectUrl(activity.redirectUrl, '#activities', activity.openNewTab);
       }
     }
   });
@@ -1633,6 +1938,240 @@ function renderMembers() {
   });
 }
 
+function renderDonations() {
+  const grid = document.getElementById('donationsGrid');
+  if (!grid) return;
+
+  grid.innerHTML = '';
+
+  appData.donations.forEach(function(donation) {
+    const donationCard = createDonationCard(donation);
+    grid.appendChild(donationCard);
+  });
+}
+
+function createDonationCard(donation) {
+  const card = document.createElement('div');
+  card.className = 'donation-card';
+  
+  const formattedDate = new Date(donation.date).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  card.innerHTML = 
+    '<div class="donation-header">' +
+      '<div class="donor-name">' + donation.donorName + '</div>' +
+      '<div class="donation-amount">₹' + donation.amount.toLocaleString() + '</div>' +
+    '</div>' +
+    '<div class="donation-meta">' +
+      '<span>📅 ' + formattedDate + '</span>' +
+    '</div>' +
+    '<div class="donation-purpose">' + donation.purpose + '</div>' +
+    '<div class="card-actions">' +
+      '<button class="btn btn--sm btn--outline" onclick="editDonation(' + donation.id + ')">Edit</button>' +
+      '<button class="btn btn--sm btn--outline" onclick="deleteDonation(' + donation.id + ')" style="color: var(--club-red); border-color: var(--club-red);">Delete</button>' +
+    '</div>';
+
+  return card;
+}
+
+function renderWeeklyFees() {
+  const grid = document.getElementById('weeklyFeesGrid');
+  if (!grid) return;
+
+  grid.innerHTML = '';
+
+  appData.weeklyFees.forEach(function(feeRecord) {
+    const feeCard = createFeeCard(feeRecord);
+    grid.appendChild(feeCard);
+  });
+}
+
+function createFeeCard(feeRecord) {
+  const card = document.createElement('div');
+  card.className = 'fee-card';
+  
+  const paidCount = feeRecord.payments.filter(function(p) { return p.status === 'paid'; }).length;
+  const totalCount = feeRecord.payments.length;
+  const paidAmount = paidCount * 20;
+
+  const paymentsHTML = feeRecord.payments.map(function(payment) {
+    const dateStr = new Date(payment.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const cursor = isAdminMode ? 'pointer' : 'default';
+    return '<div class="payment-item ' + payment.status + '">' +
+      '<span>' + dateStr + '</span>' +
+      '<span class="status-badge ' + payment.status + '" onclick="togglePaymentStatus(' + feeRecord.memberId + ', \'' + payment.date + '\')" style="cursor: ' + cursor + ';">' +
+        payment.status +
+      '</span>' +
+    '</div>';
+  }).join('');
+
+  card.innerHTML = 
+    '<div class="fee-header">' +
+      '<div class="member-name">' + feeRecord.memberName + '</div>' +
+      '<div class="payment-summary">' + paidCount + '/' + totalCount + ' payments (₹' + paidAmount + ')</div>' +
+    '</div>' +
+    '<div class="payment-history">' +
+      paymentsHTML +
+    '</div>';
+
+  return card;
+}
+
+function updateTotalDonations() {
+  const total = appData.donations.reduce(function(sum, donation) { return sum + donation.amount; }, 0);
+  const totalElement = document.getElementById('totalDonations');
+  if (totalElement) {
+    totalElement.textContent = '₹' + total.toLocaleString();
+  }
+}
+
+async function togglePaymentStatus(memberId, paymentDate) {
+  if (!isAdminMode) return;
+  
+  try {
+    // Find the fee record and payment locally first to determine the next status
+    const feeRecord = appData.weeklyFees.find(function(f) { return f.memberId === memberId; });
+    if (!feeRecord) {
+      showMessage('Fee record not found', 'error');
+      return;
+    }
+    
+    const payment = feeRecord.payments.find(function(p) { return p.date === paymentDate; });
+    if (!payment) {
+      showMessage('Payment not found', 'error');
+      return;
+    }
+    
+    // Determine the next status
+    let newStatus;
+    if (payment.status === 'pending') {
+      newStatus = 'paid';
+    } else if (payment.status === 'paid') {
+      newStatus = 'overdue';
+    } else {
+      newStatus = 'pending';
+    }
+    
+    // Update payment status via API
+    await api.weeklyFee.updatePaymentStatus(feeRecord.id, paymentDate, newStatus);
+    
+    // Reload weekly fees data
+    appData.weeklyFees = await api.weeklyFee.getAll();
+    
+    // Update UI
+    renderWeeklyFees();
+    updateDashboardMetrics();
+    showMessage('Payment status updated to ' + newStatus);
+  } catch (error) {
+    console.error('Error updating payment status:', error);
+    showMessage('Failed to update payment status. Using local data instead.', 'error');
+    
+    // Fallback to local data if API fails
+    const feeRecord = appData.weeklyFees.find(function(f) { return f.memberId === memberId; });
+    if (!feeRecord) return;
+    
+    const payment = feeRecord.payments.find(function(p) { return p.date === paymentDate; });
+    if (!payment) return;
+    
+    // Cycle through statuses: pending -> paid -> overdue -> pending
+    if (payment.status === 'pending') {
+      payment.status = 'paid';
+    } else if (payment.status === 'paid') {
+      payment.status = 'overdue';
+    } else {
+      payment.status = 'pending';
+    }
+    
+    renderWeeklyFees();
+    updateDashboardMetrics();
+  }
+}
+
+function updateDashboardMetrics() {
+  // Calculate metrics
+  const totalMembers = appData.members.length;
+  const totalActivities = appData.activities.length;
+  const totalDonations = appData.donations.reduce(function(sum, d) { return sum + d.amount; }, 0);
+  const totalExpenses = appData.expenses.reduce(function(sum, e) { return sum + e.amount; }, 0);
+  const netBalance = totalDonations - totalExpenses;
+  
+  // Calculate fee metrics
+  let feesCollected = 0;
+  let pendingFees = 0;
+  let overdueFees = 0;
+  
+  appData.weeklyFees.forEach(function(member) {
+    member.payments.forEach(function(payment) {
+      if (payment.status === 'paid') {
+        feesCollected += payment.amount;
+      } else if (payment.status === 'pending') {
+        pendingFees += payment.amount;
+      } else if (payment.status === 'overdue') {
+        overdueFees += payment.amount;
+      }
+    });
+  });
+
+  // Update DOM elements with safe access
+  const elements = {
+    totalMembersCount: document.getElementById('totalMembersCount'),
+    totalActivitiesCount: document.getElementById('totalActivitiesCount'),
+    totalDonationsAmount: document.getElementById('totalDonationsAmount'),
+    totalExpensesAmount: document.getElementById('totalExpensesAmount'),
+    netBalanceAmount: document.getElementById('netBalanceAmount'),
+    feesCollectedAmount: document.getElementById('feesCollectedAmount')
+  };
+
+  if (elements.totalMembersCount) elements.totalMembersCount.textContent = totalMembers;
+  if (elements.totalActivitiesCount) elements.totalActivitiesCount.textContent = totalActivities;
+  if (elements.totalDonationsAmount) elements.totalDonationsAmount.textContent = '₹' + totalDonations.toLocaleString();
+  if (elements.totalExpensesAmount) elements.totalExpensesAmount.textContent = '₹' + totalExpenses.toLocaleString();
+  if (elements.netBalanceAmount) elements.netBalanceAmount.textContent = '₹' + netBalance.toLocaleString();
+  if (elements.feesCollectedAmount) elements.feesCollectedAmount.textContent = '₹' + feesCollected.toLocaleString();
+}
+
+// Dashboard functions
+async function renderDashboard() {
+  try {
+    const dashboardData = await api.dashboard.getStats();
+    updateDashboardMetricsFromData(dashboardData);
+  } catch (error) {
+    console.error('Error loading dashboard data:', error);
+    showMessage('Failed to load dashboard data', 'error');
+    
+    // Fallback to local calculation
+    updateDashboardMetrics();
+  }
+}
+
+function updateDashboardMetricsFromData(data) {
+  // Update DOM elements with safe access
+  const elements = {
+    totalMembersCount: document.getElementById('totalMembersCount'),
+    totalActivitiesCount: document.getElementById('totalActivitiesCount'),
+    totalDonationsAmount: document.getElementById('totalDonationsAmount'),
+    totalExpensesAmount: document.getElementById('totalExpensesAmount'),
+    netBalanceAmount: document.getElementById('netBalanceAmount'),
+    feesCollectedAmount: document.getElementById('feesCollectedAmount'),
+    pendingFeesAmount: document.getElementById('pendingFeesAmount'),
+    overdueFeesAmount: document.getElementById('overdueFeesAmount'),
+    totalExperiencesCount: document.getElementById('totalExperiencesCount')
+  };
+
+  if (elements.totalMembersCount) elements.totalMembersCount.textContent = data.totalMembers;
+  if (elements.totalActivitiesCount) elements.totalActivitiesCount.textContent = data.totalActivities;
+  if (elements.totalDonationsAmount) elements.totalDonationsAmount.textContent = '₹' + data.totalDonations.toLocaleString();
+  if (elements.totalExpensesAmount) elements.totalExpensesAmount.textContent = '₹' + data.totalExpenses.toLocaleString();
+  if (elements.netBalanceAmount) elements.netBalanceAmount.textContent = '₹' + data.netBalance.toLocaleString();
+  if (elements.feesCollectedAmount) elements.feesCollectedAmount.textContent = '₹' + data.weeklyFeesCollected.toLocaleString();
+  if (elements.pendingFeesAmount) elements.pendingFeesAmount.textContent = '₹' + data.pendingFees.toLocaleString();
+  if (elements.overdueFeesAmount) elements.overdueFeesAmount.textContent = '₹' + data.overdueFees.toLocaleString();
+  if (elements.totalExperiencesCount) elements.totalExperiencesCount.textContent = data.totalExperiences;
+}
+
 function createMemberCard(member) {
   const card = document.createElement('div');
   card.className = 'member-card';
@@ -1660,6 +2199,242 @@ function createMemberCard(member) {
     '</div>';
 
   return card;
+}
+
+async function editMember(id) {
+  try {
+    // Try to get member from API
+    const member = await api.member.getById(id);
+    if (!member) {
+      showMessage('Member not found', 'error');
+      return;
+    }
+
+    currentEditingItem = id;
+    currentEditingType = 'member';
+    
+    const elements = {
+      modalTitle: document.getElementById('memberModalTitle'),
+      name: document.getElementById('memberName'),
+      contact: document.getElementById('memberContact'),
+      phone: document.getElementById('memberPhone'),
+      role: document.getElementById('memberRole'),
+      joinDate: document.getElementById('memberJoinDate'),
+      image: document.getElementById('memberImage'),
+      modal: document.getElementById('memberModal')
+    };
+
+    if (elements.modalTitle) elements.modalTitle.textContent = 'Edit Member';
+    if (elements.name) elements.name.value = member.name;
+    if (elements.contact) elements.contact.value = member.contact;
+    if (elements.phone) elements.phone.value = member.phone;
+    if (elements.role) elements.role.value = member.role;
+    if (elements.joinDate) elements.joinDate.value = member.joinDate;
+    if (elements.image) elements.image.value = member.image;
+    if (elements.modal) elements.modal.classList.remove('hidden');
+  } catch (error) {
+    console.error('Error loading member for editing:', error);
+    
+    // Fallback to local data if API fails
+    const member = appData.members.find(function(m) { return m.id === id; });
+    if (!member) {
+      showMessage('Member not found', 'error');
+      return;
+    }
+
+    currentEditingItem = id;
+    currentEditingType = 'member';
+    
+    const elements = {
+      modalTitle: document.getElementById('memberModalTitle'),
+      name: document.getElementById('memberName'),
+      contact: document.getElementById('memberContact'),
+      phone: document.getElementById('memberPhone'),
+      role: document.getElementById('memberRole'),
+      joinDate: document.getElementById('memberJoinDate'),
+      image: document.getElementById('memberImage'),
+      modal: document.getElementById('memberModal')
+    };
+
+    if (elements.modalTitle) elements.modalTitle.textContent = 'Edit Member';
+    if (elements.name) elements.name.value = member.name;
+    if (elements.contact) elements.contact.value = member.contact;
+    if (elements.phone) elements.phone.value = member.phone;
+    if (elements.role) elements.role.value = member.role;
+    if (elements.joinDate) elements.joinDate.value = member.joinDate;
+    if (elements.image) elements.image.value = member.image;
+    if (elements.modal) elements.modal.classList.remove('hidden');
+  }
+}
+
+async function deleteMember(id) {
+  if (confirm('Are you sure you want to delete this member?')) {
+    try {
+      // Try to delete member via API
+      await api.member.delete(id);
+      
+      // The backend should handle deleting related weekly fees, but we'll reload all data
+      appData.members = await api.member.getAll();
+      appData.weeklyFees = await api.weeklyFee.getAll();
+      
+      // Update UI
+      renderMembers();
+      renderWeeklyFees();
+      updateDashboardMetrics();
+      showMessage('Member deleted successfully');
+    } catch (error) {
+      console.error('Error deleting member:', error);
+      showMessage('Failed to delete member. Using local data instead.', 'error');
+      
+      // Fallback to local data if API fails
+      appData.members = appData.members.filter(function(m) { return m.id !== id; });
+      appData.weeklyFees = appData.weeklyFees.filter(function(f) { return f.memberId !== id; });
+      renderMembers();
+      renderWeeklyFees();
+      updateDashboardMetrics();
+    }
+  }
+}
+
+async function editDonation(id) {
+  try {
+    // Try to get donation from API
+    const donation = await api.donation.getById(id);
+    if (!donation) {
+      showMessage('Donation not found', 'error');
+      return;
+    }
+
+    currentEditingItem = id;
+    currentEditingType = 'donation';
+    
+    const elements = {
+      modalTitle: document.getElementById('donationModalTitle'),
+      donorName: document.getElementById('donorName'),
+      amount: document.getElementById('donationAmount'),
+      date: document.getElementById('donationDate'),
+      purpose: document.getElementById('donationPurpose'),
+      modal: document.getElementById('donationModal')
+    };
+
+    if (elements.modalTitle) elements.modalTitle.textContent = 'Edit Donation';
+    if (elements.donorName) elements.donorName.value = donation.donorName;
+    if (elements.amount) elements.amount.value = donation.amount;
+    if (elements.date) elements.date.value = donation.date;
+    if (elements.purpose) elements.purpose.value = donation.purpose;
+    if (elements.modal) elements.modal.classList.remove('hidden');
+  } catch (error) {
+    console.error('Error loading donation for editing:', error);
+    
+    // Fallback to local data if API fails
+    const donation = appData.donations.find(function(d) { return d.id === id; });
+    if (!donation) {
+      showMessage('Donation not found', 'error');
+      return;
+    }
+
+    currentEditingItem = id;
+    currentEditingType = 'donation';
+    
+    const elements = {
+      modalTitle: document.getElementById('donationModalTitle'),
+      donorName: document.getElementById('donorName'),
+      amount: document.getElementById('donationAmount'),
+      date: document.getElementById('donationDate'),
+      purpose: document.getElementById('donationPurpose'),
+      modal: document.getElementById('donationModal')
+    };
+
+    if (elements.modalTitle) elements.modalTitle.textContent = 'Edit Donation';
+    if (elements.donorName) elements.donorName.value = donation.donorName;
+    if (elements.amount) elements.amount.value = donation.amount;
+    if (elements.date) elements.date.value = donation.date;
+    if (elements.purpose) elements.purpose.value = donation.purpose;
+    if (elements.modal) elements.modal.classList.remove('hidden');
+  }
+}
+
+async function saveDonation() {
+  const donorName = document.getElementById('donorName').value;
+  const amount = parseInt(document.getElementById('donationAmount').value);
+  const date = document.getElementById('donationDate').value;
+  const purpose = document.getElementById('donationPurpose').value;
+
+  try {
+    const donationData = {
+      donorName: donorName,
+      amount: amount,
+      date: date,
+      purpose: purpose
+    };
+
+    if (currentEditingItem) {
+      // Update existing donation
+      await api.donation.update(currentEditingItem, donationData);
+    } else {
+      // Create new donation
+      await api.donation.create(donationData);
+    }
+
+    // Reload donations data
+    appData.donations = await api.donation.getAll();
+    
+    // Update UI
+    renderDonations();
+    updateTotalDonations();
+    updateDashboardMetrics();
+    renderCharts();
+    showMessage(currentEditingItem ? 'Donation updated successfully' : 'Donation added successfully');
+    return;
+  } catch (error) {
+    console.error('Error saving donation:', error);
+    showMessage('Failed to save donation. Using local data instead.', 'error');
+    
+    // Fallback to local data if API fails
+    if (currentEditingItem) {
+      const index = appData.donations.findIndex(function(d) { return d.id === currentEditingItem; });
+      if (index !== -1) {
+        appData.donations[index] = Object.assign({}, appData.donations[index], { donorName: donorName, amount: amount, date: date, purpose: purpose });
+      }
+    } else {
+      const newId = Math.max.apply(Math, appData.donations.map(function(d) { return d.id; }).concat([0])) + 1;
+      appData.donations.push({ id: newId, donorName: donorName, amount: amount, date: date, purpose: purpose });
+    }
+
+    renderDonations();
+    updateTotalDonations();
+    updateDashboardMetrics();
+    renderCharts();
+  }
+}
+
+async function deleteDonation(id) {
+  if (confirm('Are you sure you want to delete this donation?')) {
+    try {
+      // Try to delete donation via API
+      await api.donation.delete(id);
+      
+      // Reload donations data
+      appData.donations = await api.donation.getAll();
+      
+      // Update UI
+      renderDonations();
+      updateTotalDonations();
+      updateDashboardMetrics();
+      renderCharts();
+      showMessage('Donation deleted successfully');
+    } catch (error) {
+      console.error('Error deleting donation:', error);
+      showMessage('Failed to delete donation. Using local data instead.', 'error');
+      
+      // Fallback to local data if API fails
+      appData.donations = appData.donations.filter(function(d) { return d.id !== id; });
+      renderDonations();
+      updateTotalDonations();
+      updateDashboardMetrics();
+      renderCharts();
+    }
+  }
 }
 
 // Initialize the application
