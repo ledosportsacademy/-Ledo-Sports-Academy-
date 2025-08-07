@@ -1558,7 +1558,7 @@ async function saveMember() {
       if (weeklyFees && weeklyFees.length > 0) {
         for (const fee of weeklyFees) {
           fee.memberName = name;
-          await api.weeklyFee.update(fee.id, fee);
+          await api.weeklyFee.update(fee._id, fee);
         }
       }
     } else {
@@ -1567,10 +1567,10 @@ async function saveMember() {
       
       // Add weekly fee record for new member
       await api.weeklyFee.create({
-        memberId: newMember.id,
+        memberId: newMember._id, // Use _id instead of id for MongoDB ObjectId
         memberName: name,
         payments: [
-          { date: "2025-08-03", amount: 20, status: "pending" }
+          { date: new Date("2025-08-03"), amount: 20, status: "pending" }
         ]
       });
     }
@@ -1607,10 +1607,10 @@ async function saveMember() {
       
       // Add weekly fee record for new member
       appData.weeklyFees.push({
-        memberId: newId,
+        memberId: newId, // In local data, we use the local ID
         memberName: name,
         payments: [
-          { date: "2025-08-03", amount: 20, status: "pending" }
+          { date: new Date("2025-08-03"), amount: 20, status: "pending" }
         ]
       });
     }
@@ -1619,6 +1619,47 @@ async function saveMember() {
     renderWeeklyFees();
     updateDashboardMetrics();
   }
+}
+
+function renderMembers() {
+  const grid = document.getElementById('membersGrid');
+  if (!grid) return;
+
+  grid.innerHTML = '';
+
+  appData.members.forEach(function(member) {
+    const memberCard = createMemberCard(member);
+    grid.appendChild(memberCard);
+  });
+}
+
+function createMemberCard(member) {
+  const card = document.createElement('div');
+  card.className = 'member-card';
+  card.setAttribute('data-member-name', member.name.toLowerCase());
+  card.setAttribute('data-member-role', member.role.toLowerCase());
+  
+  const formattedDate = new Date(member.joinDate).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  card.innerHTML = 
+    '<img src="' + member.image + '" alt="' + member.name + '" class="member-image" onerror="this.style.display=\'none\'">' +
+    '<h4 class="member-name">' + member.name + '</h4>' +
+    '<div class="member-role">' + member.role + '</div>' +
+    '<div class="member-info">' +
+      '<div>📧 ' + member.contact + '</div>' +
+      '<div>📞 ' + member.phone + '</div>' +
+      '<div>📅 Joined: ' + formattedDate + '</div>' +
+    '</div>' +
+    '<div class="card-actions">' +
+      '<button class="btn btn--sm btn--outline" onclick="editMember(' + member.id + ')">Edit</button>' +
+      '<button class="btn btn--sm btn--outline" onclick="deleteMember(' + member.id + ')" style="color: var(--club-red); border-color: var(--club-red);">Delete</button>' +
+    '</div>';
+
+  return card;
 }
 
 // Initialize the application
